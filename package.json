@@ -1,0 +1,26 @@
+{
+  "name": "outer-loop-simulator",
+  "version": "0.1.0",
+  "description": "A hot-water heater simulator that shows how an AI agent harness can run the 'outer loop' that keeps advanced process control at its best.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test \"tests/*.test.mjs\"",
+    "compare": "node scripts/compare.mjs",
+    "screenshots": "node scripts/screenshots.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "process-control",
+    "advanced-process-control",
+    "mpc",
+    "ai-agents",
+    "agent-harness",
+    "simulation",
+    "chemical-engineering",
+    "claude"
+  ]
+}

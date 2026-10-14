@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outer-loop simulator: an AI agent that keeps process control at its best</title>
+<meta name="description" content="A hot-water heater simulator that shows how an AI agent harness can run the outer loop of advanced process control: diagnose, test on a digital twin, get approval, deploy, monitor, roll back.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%231b1d20'/%3E%3Ccircle cx='16' cy='14' r='8' fill='none' stroke='%23ffffff' stroke-width='2.5'/%3E%3Crect y='26' width='32' height='6' fill='%23f2a900'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="src/ui/rohan/tokens.css">
+<link rel="stylesheet" href="src/ui/rohan/rohan.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="shell">
+  <div class="shell-brand">
+    <span class="t-title">Outer-loop simulator</span>
+    <span class="t-body-sm">An AI agent keeps a hot-water heater's autopilot at its best</span>
+  </div>
+  <div class="shell-actions">
+    <span id="theme-slot"></span>
+    <a id="repo-link" href="https://github.com/" target="_blank" rel="noopener">Source code on GitHub</a>
+  </div>
+</header>
+<div class="viewbar" id="tabs-slot"></div>
+
+<main>
+<!-- ============================================================ live -->
+<section class="view" id="view-live">
+  <div class="page-head">
+    <div>
+      <p class="t-overline">Hot-water heater · 90 days · one tank, one heater, one sensor</p>
+      <h1 class="t-display">Live plant</h1>
+      <p class="lede t-body">Choose who looks after the autopilot and watch what happens. The agent proposes; the harness checks; you approve what it may not do on its own.</p>
+    </div>
+    <div class="toolbar" id="run-toolbar"></div>
+  </div>
+
+  <div class="live">
+    <div class="stack">
+      <div class="stats" id="stats"></div>
+      <div class="work-grid">
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head"><h2 class="t-title">Plant</h2><span id="mode-badge"></span></div>
+            <div id="plant-svg"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2 class="t-title">Scenario</h2><span class="meta">changing these restarts the run</span></div>
+            <div class="stack-sm">
+              <div class="field-row" id="scenario-fields"></div>
+              <div class="checks">
+                <label class="check"><input type="checkbox" id="sc-fouling" checked> Scale builds up on the heating element</label>
+                <label class="check"><input type="checkbox" id="sc-drift" checked> Temperature sensor drifts from day 10</label>
+                <label class="check"><input type="checkbox" id="sc-winter" checked> Winter: inlet water cools from 16 to 10 °C</label>
+              </div>
+              <label class="check"><input type="checkbox" id="truth" checked> Show the hidden truth (the outer loop never sees it)</label>
+            </div>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head"><h2 class="t-title">Water temperature</h2><span class="meta">last 3 days, °C</span></div>
+            <canvas class="chart" id="c-temp"></canvas>
+            <div class="legend">
+              <span><i class="sw sw-primary"></i>what the autopilot sees</span>
+              <span class="truth-only"><i class="sw sw-ink"></i>actual water (hidden)</span>
+              <span class="c-muted"><i class="sw dash"></i>setpoint in force</span>
+              <span><i class="sw sw-danger"></i>99 °C alarm, 100 °C boiling</span>
+              <span><i class="sw box sw-warning-soft"></i>manual or tripped</span>
+              <span><i class="sw box sw-sunken"></i>offline for maintenance</span>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2 class="t-title">Heater power</h2><span class="meta">last 3 days, kW · rating 90 kW</span></div>
+            <canvas class="chart" id="c-power"></canvas>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2 class="t-title">Cumulative profit</h2><span class="meta">₹ lakh</span></div>
+            <canvas class="chart" id="c-profit"></canvas>
+            <div class="legend">
+              <span><i class="sw" id="lg-run"></i>this run</span>
+              <span class="c-strong"><i class="sw dash"></i>the same plant with no outer loop</span>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2 class="t-title">Does the autopilot still know its plant?</h2></div>
+            <div class="twocharts">
+              <div>
+                <div class="chart-label">Heating efficiency</div>
+                <canvas class="chart" id="c-eta"></canvas>
+                <div class="legend">
+                  <span><i class="sw sw-primary"></i>in the autopilot's model</span>
+                  <span class="truth-only c-ink"><i class="sw dash"></i>actual (hidden)</span>
+                </div>
+              </div>
+              <div>
+                <div class="chart-label">Sensor error, °C</div>
+                <canvas class="chart" id="c-sensor"></canvas>
+                <div class="legend">
+                  <span class="truth-only c-ink"><i class="sw dash"></i>drift (hidden)</span>
+                  <span><i class="sw sw-primary"></i>software correction</span>
+                  <span class="truth-only"><i class="sw sw-danger"></i>error left over</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <aside class="agent-panel" aria-label="Outer loop">
+      <section class="panel">
+        <div class="panel-head"><h2 class="t-title-lg">Outer loop</h2></div>
+        <div class="stack-sm" id="loop-settings"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2 class="t-title">Needs you</h2><span id="needs-count"></span></div>
+        <div class="approvals" id="approvals"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2 class="t-title">Latest review</h2><span class="meta" id="review-meta"></span></div>
+        <div id="review"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2 class="t-title">Activity</h2><span class="meta">newest first</span></div>
+        <div class="activity" id="activity"></div>
+      </section>
+      <section class="panel memory">
+        <div class="panel-head"><h2 class="t-title">Agent memory</h2><span class="meta">what it changed and what happened</span></div>
+        <div id="memory"></div>
+      </section>
+    </aside>
+  </div>
+</section>
+
+<!-- ============================================================ compare -->
+<section class="view" id="view-compare" hidden>
+  <div class="page-head">
+    <div>
+      <p class="t-overline">Same plant, weather, demand and sensor noise</p>
+      <h1 class="t-display">Compare strategies</h1>
+      <p class="lede t-body">The same 90 days run three times: nobody looking after the autopilot, an engineer review every few weeks, and the AI agent every morning.</p>
+    </div>
+    <div class="toolbar" id="cmp-toolbar"></div>
+  </div>
+  <div id="cmp-note"></div>
+  <div class="stats-4" id="cmp-stats"></div>
+  <div class="compare-grid">
+    <section class="panel">
+      <div class="panel-head"><h2 class="t-title">Cumulative profit</h2><span class="meta">₹ lakh</span></div>
+      <canvas class="chart" id="cmp-profit"></canvas>
+      <div class="legend" id="cmp-legend"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2 class="t-title">Where the water actually was</h2><span class="meta">share of time, %</span></div>
+      <canvas class="chart" id="cmp-hist"></canvas>
+      <p class="hint" style="margin-top: var(--space-2)">The closer and tighter to 99 °C, the more the water is worth, as long as it never boils.</p>
+    </section>
+  </div>
+  <section class="panel">
+    <div class="panel-head"><h2 class="t-title">Scorecard</h2><span class="meta">90 days</span></div>
+    <div id="cmp-table"></div>
+  </section>
+</section>
+
+<!-- ============================================================ how -->
+<section class="view" id="view-how" hidden>
+  <div class="page-head">
+    <div>
+      <p class="t-overline">Concepts</p>
+      <h1 class="t-display">How it works</h1>
+    </div>
+  </div>
+  <article class="prose t-body">
+    <h2 class="t-title-lg" style="margin-top: 0">The idea</h2>
+    <p>Plants already run an <strong>inner loop</strong>: an advanced controller, the autopilot, holds the process at its targets every minute. The autopilot is only as good as its model, its sensors and its targets, and all three go stale. Equipment fouls, instruments drift, seasons change, and operators lose trust and switch it off. Keeping it at its best is an <strong>outer loop</strong> that today runs on people: an engineer who finds the time every few weeks or months. This simulator shows what happens when an <strong>AI agent inside a harness</strong> runs that outer loop every day, and why the harness, not the AI, is what makes it safe.</p>
+
+    <h2 class="t-title-lg">The plant</h2>
+    <p>A 300 kg tank is fed with cold water and heated by a 90 kW electric element. Hot water goes to a downstream process that pays more the hotter it is, so the profitable place to run is just below boiling. At 99 °C an independent switch raises an alarm; at 100 °C a safety system cuts the heater. The physics is one energy balance: <code>M·cp·dT/dt = F·cp·(Tin − T) + η·Q − UA·(T − Tamb)</code>.</p>
+    <p>Three things go wrong slowly, as they do in real plants:</p>
+    <ul>
+      <li><strong>Scale</strong> builds up on the element, so the heating efficiency η falls. The autopilot's model still assumes a clean element, so control gets sloppier and electricity is wasted; in winter the heater can run out of power.</li>
+      <li><strong>The sensor drifts</strong> and reads low. The autopilot thinks the water is cooler than it is and pushes it towards boiling.</li>
+      <li><strong>Winter</strong> brings colder inlet water, so the heater works harder.</li>
+    </ul>
+    <p>Operators react the way people do. After a high-temperature alarm they take 2 °C off the setpoint; after three alarms in a day, or a boil trip, they switch the autopilot to manual and run the heater cautiously by hand. That loss of trust is often what really costs money.</p>
+
+    <h2 class="t-title-lg">Three ways to run the outer loop</h2>
+    <div class="rb-table-wrap"><table class="rb-table rb-table-default">
+      <thead><tr><th>Who</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>Nobody</td><td>The autopilot runs on its day-one settings for ever.</td></tr>
+        <tr><td>Engineer</td><td>Every few weeks, a generous engineer review: perfect information from a step test, the sensor recalibrated, the element descaled when needed, the model updated, operators put back on the autopilot and the target reset to 95 °C. The only handicap is how often there is time for it.</td></tr>
+        <tr><td>AI agent</td><td>Every morning at 06:00 an agent reviews yesterday with the data an engineer would use, proposes changes, tests them on a digital twin and routes them through the harness.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 class="t-title-lg">The agent harness</h2>
+    <p>The agent's brain only reasons and proposes. Everything that keeps it safe is ordinary code around it, in <code>src/agent/harness.js</code>.</p>
+    <div class="rb-table-wrap"><table class="rb-table rb-table-default">
+      <thead><tr><th>Harness part</th><th>In this simulator</th></tr></thead>
+      <tbody>
+        <tr><td>Tools</td><td>Read-only: the daily report from the historian, a sensor check against operators' handheld readings, model re-identification from an energy balance and a digital-twin backtest. No tool can reach the safety system.</td></tr>
+        <tr><td>Guardrails</td><td>An approved envelope: target 85–97 °C, model efficiency 0.5–1.05, sensor correction ±3 °C, and a maximum change per review.</td></tr>
+        <tr><td>Independent check</td><td>The harness re-runs yesterday on its own twin with the proposed settings and blocks anything that raises the boiling risk, whatever the brain claimed.</td></tr>
+        <tr><td>Trust ladder</td><td>Advisor: recommends only. Co-pilot: an engineer approves each change. Bounded autopilot: small software changes inside the envelope go live on their own, and you can undo them; maintenance and larger steps still need a person.</td></tr>
+        <tr><td>Monitoring and rollback</td><td>The next morning the harness compares the day after an automatic change with the day before. More alarms, a trip or much worse control, and it puts the old settings back.</td></tr>
+        <tr><td>Audit trail and memory</td><td>Every tool call, decision and change is logged. The brain is told what it changed recently and what happened next.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 class="t-title-lg">Two brains, one harness</h2>
+    <p><strong>Built-in rules</strong> (<code>src/agent/rule-brain.js</code>) do what a good APC engineer does each morning, deterministically and free. <strong>Claude</strong> (<code>src/agent/claude-brain.js</code>) gets the same tools and a description of the plant, and decides for itself what to check and what to propose. Both go through exactly the same guardrails, twin check and approvals: swap the brain, keep the safety.</p>
+    <div id="how-note"></div>
+
+    <h2 class="t-title-lg">Run it yourself</h2>
+    <p><code>npm start</code> serves the app on <code>http://localhost:5173</code>. <code>npm test</code> runs the tests and <code>npm run compare</code> prints the three-strategy scorecard in the terminal. There is no build step and there are no dependencies.</p>
+  </article>
+</section>
+</main>
+<footer class="foot">Open source under the MIT licence. A teaching simulator, not for operating real plants. Money in Indian rupees.</footer>
+<script type="module" src="src/ui/app.js"></script>
+</body>
+</html>
